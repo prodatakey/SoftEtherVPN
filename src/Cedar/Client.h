@@ -168,21 +168,22 @@ struct ACCOUNT
 {
 	// Static data
 	CLIENT_OPTION *ClientOption;			// Client Option
-	CLIENT_AUTH *ClientAuth;				// Client authentication data
-	bool CheckServerCert;					// Check the server certificate
-	X *ServerCert;							// Server certificate
-	bool StartupAccount;					// Start-up account
+	CLIENT_AUTH *ClientAuth;			// Client authentication data
+	bool CheckServerCert;				// Check the server certificate
+	bool RetryOnServerCert;				// Retry on invalid server certificate
+	X *ServerCert;					// Server certificate
+	bool StartupAccount;				// Start-up account
 	UCHAR ShortcutKey[SHA1_SIZE];			// Key
-	UINT64 CreateDateTime;					// Creation date and time
-	UINT64 UpdateDateTime;					// Updating date
-	UINT64 LastConnectDateTime;				// Last connection date and time
+	UINT64 CreateDateTime;				// Creation date and time
+	UINT64 UpdateDateTime;				// Updating date
+	UINT64 LastConnectDateTime;			// Last connection date and time
 
 	// Dynamic data
-	LOCK *lock;								// Lock
-	SESSION *ClientSession;					// Client session
-	CLIENT_STATUS_PRINTER *StatusPrinter;	// Status indicator
+	LOCK *lock;					// Lock
+	SESSION *ClientSession;				// Client session
+	CLIENT_STATUS_PRINTER *StatusPrinter;		// Status indicator
 
-	SOCK *StatusWindow;						// Status window
+	SOCK *StatusWindow;				// Status window
 };
 
 // Client Settings
@@ -347,6 +348,7 @@ struct RPC_CLIENT_CREATE_ACCOUNT
 	CLIENT_AUTH *ClientAuth;				// Client authentication data
 	bool StartupAccount;					// Startup account
 	bool CheckServerCert;					// Checking of the server certificate
+	bool RetryOnServerCert;				// Retry on invalid server certificate
 	X *ServerCert;							// Server certificate
 	UCHAR ShortcutKey[SHA1_SIZE];			// Shortcut Key
 };
@@ -399,6 +401,7 @@ struct RPC_CLIENT_GET_ACCOUNT
 	CLIENT_AUTH *ClientAuth;				// Client authentication data
 	bool StartupAccount;					// Startup account
 	bool CheckServerCert;					// Check the server certificate
+	bool RetryOnServerCert;				// Retry on invalid server certificate
 	X *ServerCert;							// Server certificate
 	UCHAR ShortcutKey[SHA1_SIZE];			// Shortcut Key
 	UINT64 CreateDateTime;					// Creation date and time (Ver 3.0 or later)
