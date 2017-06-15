@@ -1381,6 +1381,11 @@ void CleanupSession(SESSION *s)
 		FreePacketAdapter(s->PacketAdapter);
 	}
 
+	if (s->NicDownOnDisconnect != NULL && *s->NicDownOnDisconnect)
+	{
+		UnixVLanSetState(s->ClientOption->DeviceName, false);
+	}
+
 	if (s->OldTraffic != NULL)
 	{
 		FreeTraffic(s->OldTraffic);
@@ -1528,6 +1533,11 @@ void ClientThread(THREAD *t, void *param)
 
 		CLog(s->Cedar->Client, "LC_CONNECT_ERROR", s->ClientOption->AccountName,
 			GetUniErrorStr(s->Err), s->Err);
+
+		if (s->NicDownOnDisconnect != NULL && *s->NicDownOnDisconnect)
+		{
+			UnixVLanSetState(s->ClientOption->DeviceName, false);
+		}
 
 		if (s->LinkModeClient && s->Link != NULL)
 		{
@@ -1953,7 +1963,7 @@ SESSION *NewRpcSessionEx2(CEDAR *cedar, CLIENT_OPTION *option, UINT *err, char *
 }
 
 // Create a client session
-SESSION *NewClientSessionEx(CEDAR *cedar, CLIENT_OPTION *option, CLIENT_AUTH *auth, PACKET_ADAPTER *pa, ACCOUNT *account)
+SESSION *NewClientSessionEx(CEDAR *cedar, CLIENT_OPTION *option, CLIENT_AUTH *auth, PACKET_ADAPTER *pa, ACCOUNT *account, bool *NicDownOnDisconnect)
 {
 	SESSION *s;
 	THREAD *t;
@@ -2081,6 +2091,8 @@ SESSION *NewClientSessionEx(CEDAR *cedar, CLIENT_OPTION *option, CLIENT_AUTH *au
 		s->ClientOption->NumRetry = 0;
 	}
 
+	s->NicDownOnDisconnect = NicDownOnDisconnect;
+
 	// Create a client thread
 	t = NewThread(ClientThread, (void *)s);
 	WaitThreadInit(t);
@@ -2088,9 +2100,9 @@ SESSION *NewClientSessionEx(CEDAR *cedar, CLIENT_OPTION *option, CLIENT_AUTH *au
 
 	return s;
 }
-SESSION *NewClientSession(CEDAR *cedar, CLIENT_OPTION *option, CLIENT_AUTH *auth, PACKET_ADAPTER *pa)
+SESSION *NewClientSession(CEDAR *cedar, CLIENT_OPTION *option, CLIENT_AUTH *auth, PACKET_ADAPTER *pa, bool *NicDownOnDisconnect)
 {
-	return NewClientSessionEx(cedar, option, auth, pa, NULL);
+	return NewClientSessionEx(cedar, option, auth, pa, NULL, NicDownOnDisconnect);
 }
 
 // Get the session from the 32bit session key

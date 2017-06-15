@@ -196,6 +196,7 @@ struct CLIENT_CONFIG
 	UINT KeepConnectProtocol;				// Protocol
 	UINT KeepConnectInterval;				// Interval
 	bool NoChangeWcmNetworkSettingOnWindows8;	// Don't change the WCM network settings on Windows 8
+	bool NicDownOnDisconnect;				// Put NIC down on disconnec/connection loss and put it up again after connecting to VPN server
 };
 
 // Version acquisition
