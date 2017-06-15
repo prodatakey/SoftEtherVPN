@@ -3944,6 +3944,7 @@ void InRpcClientConfig(CLIENT_CONFIG *c, PACK *p)
 	c->KeepConnectProtocol = PackGetInt(p, "KeepConnectProtocol");
 	c->KeepConnectInterval = PackGetInt(p, "KeepConnectInterval");
 	c->AllowRemoteConfig = PackGetInt(p, "AllowRemoteConfig") == 0 ? false : true;
+	c->NicDownOnDisconnect = PackGetBool(p, "NicDownOnDisconnect");
 	PackGetStr(p, "KeepConnectHost", c->KeepConnectHost, sizeof(c->KeepConnectHost));
 }
 void OutRpcClientConfig(PACK *p, CLIENT_CONFIG *c)
@@ -3959,6 +3960,7 @@ void OutRpcClientConfig(PACK *p, CLIENT_CONFIG *c)
 	PackAddInt(p, "KeepConnectProtocol", c->KeepConnectProtocol);
 	PackAddInt(p, "KeepConnectInterval", c->KeepConnectInterval);
 	PackAddInt(p, "AllowRemoteConfig", c->AllowRemoteConfig);
+	PackAddBool(p, "NicDownOnDisconnect", c->NicDownOnDisconnect);
 	PackAddStr(p, "KeepConnectHost", c->KeepConnectHost);
 }
 
@@ -6747,7 +6749,7 @@ bool CtConnect(CLIENT *c, RPC_CLIENT_CONNECT *connect)
 
 					CLog(c, "LC_CONNECT", connect->AccountName);
 
-					r->ClientSession = NewClientSessionEx(c->Cedar, r->ClientOption, r->ClientAuth, pa, r);
+					r->ClientSession = NewClientSessionEx(c->Cedar, r->ClientOption, r->ClientAuth, pa, r, &c->Config.NicDownOnDisconnect);
 					Notify(r->ClientSession, CLIENT_NOTIFY_ACCOUNT_CHANGED);
 
 					ret = true;
@@ -6762,6 +6764,82 @@ bool CtConnect(CLIENT *c, RPC_CLIENT_CONNECT *connect)
 	CiSaveConfigurationFile(c);
 
 	return ret;
+}
+
+// Put all unused TUN interfaces down
+// Requires account and VLan lists of the CLIENT argument to be already locked
+bool CtVLansDown(CLIENT *c)
+{
+#ifndef UNIX_LINUX
+	return true;
+#else
+	int i;
+	LIST *tmpVLanList;
+	UNIX_VLAN t, *r;
+	bool result = true;
+
+	if (c == NULL)
+	{
+		return false;
+	}
+
+	tmpVLanList = CloneList(c->UnixVLanList);
+	if (tmpVLanList == NULL)
+	{
+		return false;
+	}
+
+	// Remove from tmpVLanList all VLans corresponding to active sessions
+	for (i = 0; i < LIST_NUM(c->AccountList); ++i)
+	{
+		ACCOUNT *a = LIST_DATA(c->AccountList, i);
+		if (a->ClientSession == NULL)
+		{
+			continue;
+		}
+
+		Zero(&t, sizeof(t));
+		StrCpy(t.Name, sizeof(t.Name), a->ClientOption->DeviceName);
+		r = Search(tmpVLanList, &t);
+		Delete(tmpVLanList, r);
+	}
+
+	// Set down every VLan in tmpVLanList
+	for (i = 0; i < LIST_NUM(tmpVLanList) && result; ++i)
+	{
+		r = LIST_DATA(tmpVLanList, i);
+		result = UnixVLanSetState(r->Name, false);
+		// [MP:] Should we report *critical* error on failure?
+	}
+
+	ReleaseList(tmpVLanList);
+	return result;
+#endif
+}
+
+// Put all TUN interfaces up
+// Requires VLan list of the CLIENT argument to be already locked
+bool CtVLansUp(CLIENT *c)
+{
+#ifndef UNIX_LINUX
+	return true;
+#else
+	int i;
+	UNIX_VLAN *r;
+
+	if (c == NULL)
+	{
+		return false;
+	}
+
+	for (i = 0; i < LIST_NUM(c->UnixVLanList); ++i)
+	{
+		r = LIST_DATA(c->UnixVLanList, i);
+		UnixVLanSetState(r->Name, true);
+	}
+
+	return true;
+#endif
 }
 
 // Get the account information
@@ -6983,6 +7061,20 @@ bool CtSetClientConfig(CLIENT *c, CLIENT_CONFIG *o)
 		}
 	}
 	Unlock(k->lock);
+
+	// Apply TAP state
+	LockList(c->AccountList);
+	LockList(c->UnixVLanList);
+	if (o->NicDownOnDisconnect)
+	{
+		CtVLansDown(c);
+	}
+	else
+	{
+		CtVLansUp(c);
+	}
+	UnlockList(c->UnixVLanList);
+	UnlockList(c->AccountList);
 
 	return true;
 }
@@ -8392,8 +8484,8 @@ bool CtCreateVLan(CLIENT *c, RPC_CLIENT_CREATE_VLAN *create)
 		GenMacAddress(r->MacAddress);
 		StrCpy(r->Name, sizeof(r->Name), create->DeviceName);
 
-		// Create a Tap
-		if (UnixVLanCreate(r->Name, r->MacAddress) == false)
+		// Create a TUN
+		if (UnixVLanCreate(r->Name, r->MacAddress, !c->Config.NicDownOnDisconnect) == false)
 		{
 			// Failure
 			Free(r);
@@ -9461,6 +9553,7 @@ void CiLoadClientConfig(CLIENT_CONFIG *c, FOLDER *f)
 	c->AllowRemoteConfig = CfgGetBool(f, "AllowRemoteConfig");
 	c->KeepConnectInterval = MAKESURE(CfgGetInt(f, "KeepConnectInterval"), KEEP_INTERVAL_MIN, KEEP_INTERVAL_MAX);
 	c->NoChangeWcmNetworkSettingOnWindows8 = CfgGetBool(f, "NoChangeWcmNetworkSettingOnWindows8");
+	c->NicDownOnDisconnect = CfgGetBool(f, "NicDownOnDisconnect");
 }
 
 // Read the client authentication data
@@ -9789,7 +9882,7 @@ void CiLoadVLan(CLIENT *c, FOLDER *f)
 	Add(c->UnixVLanList, v);
 
 #ifdef	OS_UNIX
-	UnixVLanCreate(v->Name, v->MacAddress);
+	UnixVLanCreate(v->Name, v->MacAddress, !c->Config.NicDownOnDisconnect);
 #endif	// OS_UNIX
 }
 
@@ -10013,6 +10106,7 @@ void CiWriteClientConfig(FOLDER *cc, CLIENT_CONFIG *config)
 	CfgAddBool(cc, "AllowRemoteConfig", config->AllowRemoteConfig);
 	CfgAddInt(cc, "KeepConnectInterval", config->KeepConnectInterval);
 	CfgAddBool(cc, "NoChangeWcmNetworkSettingOnWindows8", config->NoChangeWcmNetworkSettingOnWindows8);
+	CfgAddBool(cc, "NicDownOnDisconnect", config->NicDownOnDisconnect);
 }
 
 // Write the client authentication data
