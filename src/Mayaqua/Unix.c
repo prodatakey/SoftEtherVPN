@@ -1650,6 +1650,23 @@ void *UnixFileOpen(char *name, bool write_mode, bool read_lock)
 	return (void *)p;
 }
 
+// Get UNIXIO object for stdout
+void* GetUnixio4Stdout()
+{
+	static UNIXIO unixio =
+	{
+		.fd = -1,
+		.write_mode = true
+	};
+
+	if (g_foreground)
+	{
+		unixio.fd = STDOUT_FILENO;
+		return &unixio;
+	}
+	return NULL;
+}
+
 // Return the current thread ID
 UINT UnixThreadId()
 {
