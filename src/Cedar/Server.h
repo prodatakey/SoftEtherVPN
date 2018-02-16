@@ -367,6 +367,7 @@ struct SERVER
 
 
 	volatile UINT NatTGlobalUdpPort;	// NAT-T global UDP port
+	bool ConfigLoaded;		// Configuration file loading status
 };
 
 

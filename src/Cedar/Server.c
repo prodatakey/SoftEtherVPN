@@ -2780,19 +2780,21 @@ void SiInitConfiguration(SERVER *s)
 	SLog(s->Cedar, "LS_LOAD_CONFIG_1");
 	if (SiLoadConfigurationFile(s) == false)
 	{
-		// Ethernet initialization
-		InitEth();
+		s->ConfigLoaded = false;
 
 		SLog(s->Cedar, "LS_LOAD_CONFIG_3");
-		SiLoadInitialConfiguration(s);
 
-		SetFifoCurrentReallocMemSize(MEM_FIFO_REALLOC_MEM_SIZE);
-
-		server_reset_setting = false;
+		if (! s->Cedar->Bridge)
+		{
+			FreeOpenVpnServerUdp(s->OpenVpnServerUdp);
+			FreeIPsecServer(s->IPsecServer);
+		}
+		return;
 	}
 	else
 	{
 		SLog(s->Cedar, "LS_LOAD_CONFIG_2");
+		s->ConfigLoaded = true;
 	}
 
 	s->CfgRw->DontBackup = s->DontBackupConfig;
@@ -6736,6 +6738,12 @@ void StStartServer(bool bridge)
 	Unlock(server_lock);
 
 //	StartCedarLog();
+
+	if (! server)
+	{
+		kill(getppid(), SIGTERM);
+		AbortExit();
+	}
 }
 
 // Get the server
@@ -10987,6 +10995,25 @@ SERVER *SiNewServerEx(bool bridge, bool in_client_inner_server, bool relay_serve
 
 	// Initialize the configuration
 	SiInitConfiguration(s);
+	if (!s->ConfigLoaded)
+	{
+		FreeLog(s->Logger);
+		StopKeep(s->Keep);
+		DeleteLock(s->TasksFromFarmControllerLock);
+		DeleteLock(s->SyslogLock);
+		FreeSysLog(s->Syslog);
+		ReleaseList(s->ServerListenerList);
+		StopCedar(s->Cedar);
+		Release(s->ref);
+		DeleteLock(s->SaveCfgLock);
+		DeleteLock(s->OpenVpnSstpConfigLock);
+		DeleteLock(s->lock);
+		FreeServerCapsCache(s);
+		SiFreeHubCreateHistory(s);
+		Free(s);
+		s = NULL;
+		return s;
+	}
 
 	SetFifoCurrentReallocMemSize(MEM_FIFO_REALLOC_MEM_SIZE);
 
