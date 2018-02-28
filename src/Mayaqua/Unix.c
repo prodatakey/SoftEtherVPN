@@ -1650,6 +1650,23 @@ void *UnixFileOpen(char *name, bool write_mode, bool read_lock)
 	return (void *)p;
 }
 
+// Get UNIXIO object for stdout
+void* GetUnixio4Stdout()
+{
+	static UNIXIO unixio =
+	{
+		.fd = -1,
+		.write_mode = true
+	};
+
+	if (g_foreground)
+	{
+		unixio.fd = STDOUT_FILENO;
+		return &unixio;
+	}
+	return NULL;
+}
+
 // Return the current thread ID
 UINT UnixThreadId()
 {
@@ -2795,6 +2812,12 @@ RESTART_PROCESS:
 				}
 			}
 		}
+	}
+	else if (argc >= 3 && StrCmpi(argv[1], UNIX_SVC_ARG_START) == 0 && StrCmpi(argv[2], UNIX_SVC_ARG_FOREGROUND) == 0)
+	{
+		InitMayaqua(false, false, argc, argv);
+		UnixExecService(name, start, stop);
+		FreeMayaqua();
 	}
 	else
 	{
