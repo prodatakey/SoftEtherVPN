@@ -115,11 +115,6 @@
 #define	SERVER_H
 
 // Default ports
-#define	SERVER_DEF_PORTS_1				443
-#define	SERVER_DEF_PORTS_2				992
-#define	SERVER_DEF_PORTS_3				1194
-#define	SERVER_DEF_PORTS_4				GC_DEFAULT_PORT
-
 #define	SERVER_DEF_PORTS_INCLIENT_1		995
 #define	SERVER_DEF_PORTS_INCLIENT_2		465
 #define	SERVER_DEF_PORTS_INCLIENT_3		9008	// for admin (in client)
@@ -367,6 +362,7 @@ struct SERVER
 
 
 	volatile UINT NatTGlobalUdpPort;	// NAT-T global UDP port
+	bool ConfigLoaded;		// Configuration file loading status
 };
 
 
@@ -480,14 +476,10 @@ void StStopServer();
 void SiInitConfiguration(SERVER *s);
 void SiFreeConfiguration(SERVER *s);
 UINT SiWriteConfigurationFile(SERVER *s);
-void SiLoadInitialConfiguration(SERVER *s);
 bool SiLoadConfigurationFile(SERVER *s);
 bool SiLoadConfigurationFileMain(SERVER *s, FOLDER *root);
-void SiInitDefaultServerCert(SERVER *s);
-void SiInitCipherName(SERVER *s);
 void SiGenerateDefaultCert(X **server_x, K **server_k);
 void SiGenerateDefaultCertEx(X **server_x, K **server_k, char *common_name);
-void SiInitListenerList(SERVER *s);
 void SiLockListenerList(SERVER *s);
 void SiUnlockListenerList(SERVER *s);
 bool SiAddListener(SERVER *s, UINT port, bool enabled);
