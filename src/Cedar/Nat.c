@@ -156,7 +156,9 @@ RPC *NatAdminConnect(CEDAR *cedar, char *hostname, UINT port, void *hashed_passw
 		return NULL;
 	}
 
-	if (StartSSL(sock, NULL, NULL) == false)
+    /// \todo (msr) for test logging
+	//if (StartSSL(sock, NULL, NULL) == false)
+	if (StartSSL(sock, NULL, NULL, NULL) == false)
 	{
 		*err = ERR_PROTOCOL_ERROR;
 		ReleaseSock(sock);
@@ -1166,7 +1168,9 @@ void NiAdminThread(THREAD *thread, void *param)
 
 	err = ERR_AUTH_FAILED;
 
-	if (StartSSL(s, n->AdminX, n->AdminK))
+    /// \todo (msr) for test logging
+    //if (StartSSL(s, n->AdminX, n->AdminK))
+	if (StartSSL(s, n->AdminX, n->AdminK, NULL))
 	{
 		PACK *p;
 

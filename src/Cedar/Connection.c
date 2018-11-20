@@ -3136,10 +3136,18 @@ void ConnectionAccept(CONNECTION *c)
 	Unlock(c->Cedar->lock);
 
 	// Start the SSL communication
+
 	Debug("StartSSL()\n");
 	Copy(&s->SslAcceptSettings, &c->Cedar->SslAcceptSettings, sizeof(SSL_ACCEPT_SETTINGS));
-	if (StartSSL(s, x, k) == false)
+
+    /// \todo (msr) for test logging
+	//if (StartSSL(s, x, k) == false)
+	if (StartSSL(s, x, k, c) == false)
 	{
+
+        /// \todo (msr) test logging
+        WriteServerLog(c->Cedar, L"Failed to StartSSL.");
+
 		// Failed
 		AddNoSsl(c->Cedar, &s->RemoteIP);
 		Debug("Failed to StartSSL.\n");
@@ -3162,6 +3170,11 @@ void ConnectionAccept(CONNECTION *c)
 	// Accept the connection
 	if (ServerAccept(c) == false)
 	{
+        /// \todo (msr) test logging
+        wchar_t message[64];
+        swprintf(message, 64, L"ServerAccept Failed. Err = %u\n", c->Err);
+        WriteServerLog(c->Cedar, message);
+
 		// Failed
 		Debug("ServerAccept Failed. Err = %u\n", c->Err);
 		goto ERROR;

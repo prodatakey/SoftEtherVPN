@@ -3991,7 +3991,9 @@ SOCK *ClientAdditionalConnectToServer(CONNECTION *c)
 	SetTimeout(s, CONNECTING_TIMEOUT);
 
 	// Start the SSL communication
-	if (StartSSLEx(s, NULL, NULL, (c->DontUseTls1 ? false : true), 0, c->ServerName) == false)
+    /// \todo (msr) for test logging
+	//if (StartSSLEx(s, NULL, NULL, (c->DontUseTls1 ? false : true), 0, c->ServerName) == false)
+	if (StartSSLEx(s, NULL, NULL, (c->DontUseTls1 ? false : true), 0, c->ServerName, NULL) == false)
 	{
 		// SSL communication failure
 		Disconnect(s);
@@ -6425,7 +6427,9 @@ SOCK *ClientConnectToServer(CONNECTION *c)
 	SetTimeout(s, CONNECTING_TIMEOUT);
 
 	// Start the SSL communication
-	if (StartSSLEx(s, x, k, (c->DontUseTls1 ? false : true), 0, c->ServerName) == false)
+    /// \todo (msr) for test logging
+	//if (StartSSLEx(s, x, k, (c->DontUseTls1 ? false : true), 0, c->ServerName) == false)
+	if (StartSSLEx(s, x, k, (c->DontUseTls1 ? false : true), 0, c->ServerName, NULL) == false)
 	{
 		// SSL communication start failure
 		Disconnect(s);

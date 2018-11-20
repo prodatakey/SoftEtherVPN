@@ -156,6 +156,9 @@
 #include <sys/event.h>
 #endif	// UNIX_MACOS
 
+/// \todo (msr) for test logging
+#include <Cedar.h>
+
 #ifdef	OS_WIN32
 NETWORK_WIN32_FUNCTIONS *w32net;
 struct ROUTE_CHANGE_DATA
@@ -965,7 +968,9 @@ bool GetIPViaDnsProxyForJapanFlets(IP *ip_ret, char *hostname, bool ipv6, UINT t
 	SetTimeout(s, timeout);
 
 	// Start the SSL
-	if (StartSSLEx(s, NULL, NULL, true, 0, NULL) && (*cancel == false))
+    /// \todo (msr) for test logging
+	//if (StartSSLEx(s, NULL, NULL, true, 0, NULL) && (*cancel == false))
+	if (StartSSLEx(s, NULL, NULL, true, 0, NULL, NULL) && (*cancel == false))
 	{
 		UCHAR hash[SHA1_SIZE];
 		BUF *hash2 = StrToBin(BFLETS_DNS_PROXY_CERT_HASH);
@@ -12909,11 +12914,15 @@ bool AddChainSslCert(struct ssl_ctx_st *ctx, X *x)
 }
 
 // Start a TCP-SSL communication
-bool StartSSL(SOCK *sock, X *x, K *priv)
+/// \todo (msr) for test logging
+//bool StartSSL(SOCK *sock, X *x, K *priv)
+bool StartSSL(SOCK *sock, X *x, K *priv, void* c)
 {
-	return StartSSLEx(sock, x, priv, true, 0, NULL);
+	return StartSSLEx(sock, x, priv, true, 0, NULL, c);
 }
-bool StartSSLEx(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, char *sni_hostname)
+/// \todo (msr) for test logging
+//bool StartSSLEx(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, char *sni_hostname)
+bool StartSSLEx(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, char *sni_hostname, void* c)
 {
 	X509 *x509;
 	EVP_PKEY *key;
@@ -12923,6 +12932,14 @@ bool StartSSLEx(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, ch
 #ifdef UNIX_SOLARIS
 	SOCKET_TIMEOUT_PARAM *ttparam;
 #endif //UNIX_SOLARIS
+
+    /// \todo (msr) test logging
+    static int staticConcurrentThreads = 0;
+    int concurrentThreads;
+    if (c)
+    {
+        WriteServerLog(((CONNECTION *)c)->Cedar, L"StartSSL()");
+    }
 
 	// Validate arguments
 	if (sock == NULL)
@@ -12971,6 +12988,9 @@ bool StartSSLEx(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, ch
 
 	Lock(openssl_lock);
 	{
+        /// \todo (msr) for test logging
+        concurrentThreads = ++staticConcurrentThreads;
+
 		if (sock->ServerMode)
 		{
 			SSL_CTX_set_ssl_version(ssl_ctx, SSLv23_method());
@@ -13077,7 +13097,19 @@ bool StartSSLEx(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, ch
 #endif // UNIX_SOLARIS
 
 		// Server mode
-		if (SSL_accept(sock->ssl) <= 0)
+
+        /// \todo (msr) test logging
+        if (c)
+        {
+            wchar_t message[64];
+            swprintf(message, 64, L"calling SSL_accept() (%d)", concurrentThreads);
+            WriteServerLog(((CONNECTION *)c)->Cedar, message);
+        }
+
+        /// \todo (msr) for test logging
+		//if (SSL_accept(sock->ssl) <= 0)
+        int result;
+		if ((result = SSL_accept(sock->ssl)) <= 0)
 		{
 
 // Stop the timeout thread
@@ -13085,10 +13117,21 @@ bool StartSSLEx(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, ch
 			FreeSocketTimeout(ttparam);
 #endif // UNIX_SOLARIS
 
+            /// \todo (msr) test logging
+            if (c)
+            {
+                wchar_t message[64];
+                swprintf(message, 64, L"SSL_accept() failed (%d)", SSL_get_error(sock->ssl, result));
+                WriteServerLog(((CONNECTION *)c)->Cedar, message);
+            }
+
 			//			Unlock(ssl_connect_lock);
 			// SSL-Accept failure
 			Lock(openssl_lock);
 			{
+                /// \todo (msr) for test logging
+                --staticConcurrentThreads;
+
 				SSL_free(sock->ssl);
 				sock->ssl = NULL;
 			}
@@ -13205,6 +13248,9 @@ bool StartSSLEx(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, ch
 	// Get the algorithm name used to encrypt
 	Lock(openssl_lock);
 	{
+        /// \todo (msr) for test logging
+        --staticConcurrentThreads;
+
 		sock->CipherName = CopyStr((char *)SSL_get_cipher(sock->ssl));
 	}
 	Unlock(openssl_lock);
@@ -15091,7 +15137,9 @@ void ConnectThreadForTcp(THREAD *thread, void *param)
 		Unlock(p->CancelLock);
 
 		// Start the SSL communication
-		ssl_ret = StartSSLEx(sock, NULL, NULL, p->Tcp_SslNoTls, 0, p->Hostname);
+        /// \todo (msr) for test logging
+		//ssl_ret = StartSSLEx(sock, NULL, NULL, p->Tcp_SslNoTls, 0, p->Hostname);
+		ssl_ret = StartSSLEx(sock, NULL, NULL, p->Tcp_SslNoTls, 0, p->Hostname, NULL);
 
 		if (ssl_ret)
 		{

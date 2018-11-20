@@ -191,7 +191,9 @@ void CheckNetworkAcceptThread(THREAD *thread, void *param)
 	SOCK *s = c->s;
 	UINT i = 0;
 
-	if (StartSSL(s, c->x, c->k))
+    /// \todo (msr) for test logging
+	// if (StartSSL(s, c->x, c->k))
+	if (StartSSL(s, c->x, c->k, NULL))
 	{
 		while (true)
 		{
@@ -309,7 +311,10 @@ bool CheckNetwork()
 			num = i;
 			break;
 		}
-		if (StartSSL(socks[i], NULL, NULL) == false)
+
+        /// \todo (msr) for test logging
+        // if (StartSSL(socks[i], NULL, NULL) == false)
+		if (StartSSL(socks[i], NULL, NULL, NULL) == false)
 		{
 			ReleaseSock(socks[i]);
 			Print("Connect Failed. (%u)\n", i);

@@ -1308,8 +1308,13 @@ UINT Peek(SOCK *sock, void *data, UINT size);
 void SetNoNeedToRead(SOCK *sock);
 UINT SecureSend(SOCK *sock, void *data, UINT size);
 UINT SecureRecv(SOCK *sock, void *data, UINT size);
-bool StartSSL(SOCK *sock, X *x, K *priv);
-bool StartSSLEx(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, char *sni_hostname);
+
+/// \todo (msr) for test logging
+//bool StartSSL(SOCK *sock, X *x, K *priv);
+//bool StartSSLEx(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, char *sni_hostname);
+bool StartSSL(SOCK *sock, X *x, K *priv, void *c);
+bool StartSSLEx(SOCK *sock, X *x, K *priv, bool client_tls, UINT ssl_timeout, char *sni_hostname, void* c);
+
 bool AddChainSslCert(struct ssl_ctx_st *ctx, X *x);
 void AddChainSslCertOnDirectory(struct ssl_ctx_st *ctx);
 bool SendAll(SOCK *sock, void *data, UINT size, bool secure);

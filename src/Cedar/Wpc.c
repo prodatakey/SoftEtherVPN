@@ -805,7 +805,9 @@ BUF *HttpRequestEx3(URL_DATA *data, INTERNET_SETTING *setting,
 	if (data->Secure)
 	{
 		// Start the SSL communication
-		if (StartSSLEx(s, NULL, NULL, true, 0, (IsEmptyStr(data->SniString) ? NULL : data->SniString)) == false)
+        /// \todo (msr) for test logging
+		//if (StartSSLEx(s, NULL, NULL, true, 0, (IsEmptyStr(data->SniString) ? NULL : data->SniString)) == false)
+		if (StartSSLEx(s, NULL, NULL, true, 0, (IsEmptyStr(data->SniString) ? NULL : data->SniString), NULL) == false)
 		{
 			// SSL connection failed
 			*error_code = ERR_PROTOCOL_ERROR;
